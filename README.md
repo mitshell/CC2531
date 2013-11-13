@@ -1,7 +1,7 @@
 #############################
 # 802.15.4 monitor          #
-# based on Texas Instrument #
-# CC2531 USB dongle         #
+  based on Texas Instrument
+  CC2531 USB dongle 
 #############################
 
 This monitor is composed of multiple files: 
@@ -23,7 +23,7 @@ program as root...-, or with a login in the root group, or with the proper
 udev rules, ...)
 
 run it by calling sniffer.py:
-./python sniffer.py --help
+python ./sniffer.py --help
 
 
 # Files' description and use
