@@ -29,6 +29,7 @@
 import os
 import socket
 import signal
+from struct import pack
 from time import time, sleep
 from CC2531 import *
 
@@ -58,15 +59,17 @@ class receiver(object):
     and forwarded to a UNIX file or UDP server, as defined in .SOCK_ADDR
     ---
     The structure is a set of TLV fields:
-    Tag : uint8, Length : uint8, Value : char*[L]
+    Tag : uint8, Length : uint16, Value : char*[Length]
     T=0x01, 802.15.4 channel, uint8
     T=0x02, epoch time at frame reception, ascii encoded
     T=0x03, position at frame reception (if positionning server -GPS- available)
-            modify .get_position() method to adapt it work with your GPS
+            modify .get_position() method to adapt it to work with your GPS
             current .get_position() method uses the gps.py file to read GPS info
             from a /dev/ttyUSB serial GPS
-    T=0x10, 802.15.4 frame within TI PSD structure (default CC2531 behavior)
+    T=0x10, 802.15.4 frame within TI USB frame structure (default CC2531 behavior)
     T=0x20, 802.15.4 frame
+    ---
+    Each of this TLV structure is prefixed with a uint32 total length indication
     '''
     # debug level
     DEBUG = 1
@@ -205,15 +208,19 @@ class receiver(object):
     
     def forward(self, data=5*'\0'):
         # add channel TLV
-        dgram = [ '\x01\x01%s' % chr(self._chan) ]
+        dgram = [ '\x01\x00\x01%s' % chr(self._chan) ]
         # add time TLV
         t = str(time())
-        dgram.append( '\x02%s%s' % (chr(len(t)), t) )
+        dgram.append( '\x02%s%s' % (pack('!H', len(t)), t) )
         # eventually add position TLV
         p = self.get_position()
         if p:
-            dgram.append( '\x03%s%s' % (chr(len(p)), str(p)) )
-        # add TI PSD structure (actually, data buffer)
-        dgram.append( '\x10%s%s' % (chr(len(data)), data) )
-        # send dgram to the server
-        self.send( ''.join(dgram) )
+            dgram.append( '\x03%s%s' % (pack('!H', len(p)), str(p)) )
+        # add TI USB frame structure
+        dgram.append( '\x10%s%s' % (pack('!H', len(data)), data) )
+        #
+        # send dgram frame to the server
+        frame = ''.join(dgram)
+        frame_len = pack('!I', len(frame))
+        self.send( ''.join((frame_len, frame)) )
+        #print('forward msg: %s' % frame.encode('hex')) 

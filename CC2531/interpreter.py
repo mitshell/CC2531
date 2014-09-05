@@ -36,13 +36,20 @@ import os
 import signal
 import select
 import errno
+from struct import unpack
 from time import strftime, localtime, sleep
 from binascii import hexlify
 from CC2531 import CHANNELS
-from libmich.formats.IEEE802154 import TI_PSD, IEEE802154
+from libmich.formats.IEEE802154 import TI_USB, TI_CC, IEEE802154
 
 # export filtering
 __all__ = ['interpreter']
+
+# this is to customize another 802.15.4 frame decoder
+DECODER = IEEE802154
+# this is the default CC2531 behavior
+DECODER.PHY_INCL = False
+DECODER.FCS_INCL = False
 
 def LOG(msg=''):
     print('[interpreter] %s' % msg)
@@ -175,10 +182,15 @@ class interpreter(object):
             else:
                 for sk in r:
                     msg = sk.recv(self.SOCK_BUFLEN)
-                    if msg:
-                        self.interpret(msg)
+                    #print('UDP msg: %s' % msg.encode('hex'))
+                    while len(msg) >= 4:
+                        frame_len = unpack('!I', msg[:4])[0]
+                        frame = msg[4:4+frame_len]
+                        self.interpret(frame)
+                        msg = msg[4+frame_len:]
     
     def interpret(self, msg=''):
+	    #print('interpret msg: %s' % msg.encode('hex'))
         # init message structure
         self._cur_msg = {}
         # parse it into the structure
@@ -188,30 +200,36 @@ class interpreter(object):
         if 'frame' in self._cur_msg \
         and 'timestamp' in self._cur_msg \
         and 'channel' in self._cur_msg:
-            self.output('[+] frame received (FCS OK): %s' \
-                        % strftime('%Y-%m-%d %H:%M:%S', \
-                                   localtime(self._cur_msg['timestamp'])))
+            if self._cur_msg['FCS_OK']:
+                fcschk = 'OK'
+            else:
+                fcschk = 'error'
+            self.output('[+] frame received (FCS %s): %s' \
+                        %  (fcschk, strftime('%Y-%m-%d %H:%M:%S',
+                                    localtime(self._cur_msg['timestamp']))))
             if 'position' in self._cur_msg:
                 self.output('position (GPRMC): %s' % self._cur_msg['position'])
-            self.output('channel: %i, %i MHz' % (self._cur_msg['channel'], \
+            self.output('channel: %i, %i MHz' % (self._cur_msg['channel'],
                         CHANNELS[self._cur_msg['channel']]))
             if 'RSSI' in self._cur_msg:
                 self.output('RSSI: %i' % self._cur_msg['RSSI'])
-            if 'LQI' in self._cur_msg:
-                self.output('LQI: %i' % self._cur_msg['LQI'])
             self.output('IEEE 802.15.4 frame: %s' % hexlify(self._cur_msg['frame']))
-            self.output('IEEE 802.15.4 MAC:\n%s\n' % self._cur_msg['MAC'].show())
+            try:
+                self.output('IEEE 802.15.4 MAC:\n%s\n' % self._cur_msg['MAC'].show())
+            except:
+                self.output('IEEE 802.15.4 MAC: -decoding error-\n')
     
     def _get_tlv(self, msg=''):
-        if len(msg) > 1:
-            T, L = map(ord, msg[:2])
-            if L and len(msg) >= 2+L:
-                V = msg[2:2+L]
+        if len(msg) > 2:
+            T, L = unpack('!BH', msg[0:3])
+            if L and len(msg) >= 3+L:
+                V = msg[3:3+L]
             elif L:
                 if self.DEBUG:
                     self._log('corrupted message')
+                return ''
             self._interpret_TV(T, V)
-            return msg[2+L:]
+            return msg[3+L:]
         else:
             if self.DEBUG:
                 self._log('corrupted message')
@@ -223,26 +241,30 @@ class interpreter(object):
         elif T == 2:
             self._cur_msg['timestamp'] = float(V)
         elif T == 3:
-            # TODO: check exactly how position is represented
+            # TODO: check exactly how GPS position is computed
             self._cur_msg['position'] = V
         elif T == 0x10:
             # TI_PSD structure
-            self._interpret_PSD(V)
+            self._interpret_TI_USB(V)
         elif T == 0x20:
             self._cur_msg['frame'] = V
-            mac = IEEE802154()
+            mac = self.DECODER()
             mac.parse(V)
             self._cur_msg['MAC'] = mac
     
-    def _interpret_PSD(self, V=''):
-        psd = TI_PSD()
-        psd.map(V)
-        # process only 802.15.4 frames with correct checksum
-        if self.FCS_IGNORE or psd.FCS():
-            self._cur_msg['RSSI'] = psd.RSSI()
-            self._cur_msg['LQI'] = psd.LQI()
-            self._cur_msg['frame'] = psd.Data()
-            mac = IEEE802154()
-            mac.parse(self._cur_msg['frame'])
+    def _interpret_TI_USB(self, V=''):
+        usb = TI_USB()
+        usb.map(V)
+        # process only 802.15.4 frames with correct checksum,
+        # or process all frames if FCS is ignored
+        if self.FCS_IGNORE or usb.TI_CC.FCS():
+            self._cur_msg['dev_ts'] = usb.TS()
+            self._cur_msg['RSSI'] = usb.TI_CC.RSSI()
+            self._cur_msg['frame'] = usb.TI_CC.Payload()
+            self._cur_msg['FCS_OK'] = usb.TI_CC.FCS()
+            mac = DECODER()
+            try:
+                mac.parse(self._cur_msg['frame'])
+            except:
+                mac = ''
             self._cur_msg['MAC'] = mac
-    

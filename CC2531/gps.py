@@ -56,15 +56,17 @@ class GPS_reader(object):
             self._ser = serial.Serial(port=self.PORT, baudrate=self.BAUDRATE)
         except:
             LOG('[ERR] cannot open %s' % self.PORT)
-        self._listening = False
+            self._ser = None
         #
         self.infos = {}
         for nmea_t in self.NMEA_TYPE:
             self.infos[nmea_t] = []
+        #
         self._listening = False
         self._reading = False
         #
-        LOG(' reading position information over %s' % self.PORT)
+        if self._ser:
+            LOG(' reading position information over %s' % self.PORT)
         #
         if not self._THREADED:
             def handle_int(signum, frame):
@@ -74,7 +76,7 @@ class GPS_reader(object):
         
     def stop(self):
         self._listening = False
-        if hasattr(self, '_ser'):
+        if self._ser:
             while self._reading:
                 sleep(0.001)
             self._ser.close()
@@ -91,7 +93,7 @@ class GPS_reader(object):
             return False
     
     def listen(self):
-        if not hasattr(self, '_ser'):
+        if not self._ser:
             return
         self._listening = True
         while self.looping():
@@ -119,6 +121,9 @@ class GPS_reader(object):
                 LOG(' got %s: %s' % (nmea_t, buf[7:-2]))
     
     def get_last_info(self, nmea_t='GPRMC'):
+        if not self._ser:
+            return ''
         if nmea_t in self.NMEA_TYPE:
             if len(self.infos[nmea_t]):
-                return self.infos[nmea_t][-1]  
+                return self.infos[nmea_t][-1]
+

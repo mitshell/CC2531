@@ -150,6 +150,8 @@ def prolog():
         help='list of IEEE 802.15.4 channels to sniff on (between 11 and 26)')
     parser.add_argument('-p', '--period', type=float, default=1.0,
         help='time (in seconds) to sniff on a single channel before hopping')
+    parser.add_argument('-n', '--nofcschk', action='store_true', default=False,
+        help='displays all sniffed frames, even those with failed FCS check')
     parser.add_argument('--gps', type=str, default='/dev/ttyUSB0',
         help='serial port to get NMEA information from GPS')
     parser.add_argument('--ip', type=str, default='localhost',
@@ -189,6 +191,8 @@ def prolog():
     else:
         interpreter.OUTPUT_FILE = None
     interpreter.OUTPUT_STDOUT = not args.silent
+    #
+    interpreter.FCS_IGNORE = args.nofcschk
     #
     return chans
     
