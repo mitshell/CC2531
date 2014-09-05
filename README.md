@@ -15,10 +15,10 @@ over UDP (or a file socket) to a server which decodes IEEE802154 MAC frames
 and nicely print them on screen (and within a file, if needed).
 
 It requires the following extra packages:
-1. libusb-1: http://www.libusb.org/wiki/libusb-1.0
-2. python-libusb1: https://github.com/vpelletier/python-libusb1
-3. pySerial (for gps.py): http://pyserial.sourceforge.net/
-4. and the libmich library: https://github.com/mitshell/libmich
+* libusb-1: http://www.libusb.org/wiki/libusb-1.0
+* python-libusb1: https://github.com/vpelletier/python-libusb1
+* pySerial (for gps.py): http://pyserial.sourceforge.net/
+* and the libmich library: https://github.com/mitshell/libmich
 
 Install it by running *sudo python setup.py install*, or just run it from your 
 home directory (ensure it's in your PYTHONPATH).
