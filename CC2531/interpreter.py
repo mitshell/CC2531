@@ -254,7 +254,10 @@ class interpreter(object):
     
     def _interpret_TI_USB(self, V=''):
         usb = TI_USB()
-        usb.map(V)
+        try:
+            usb.map(V)
+        except:
+            pass
         # process only 802.15.4 frames with correct checksum,
         # or process all frames if FCS is ignored
         if self.FCS_IGNORE or usb.TI_CC.FCS():
