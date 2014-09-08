@@ -257,7 +257,7 @@ class interpreter(object):
         try:
             usb.map(V)
         except:
-            pass
+            return
         # process only 802.15.4 frames with correct checksum,
         # or process all frames if FCS is ignored
         if self.FCS_IGNORE or usb.TI_CC.FCS():
