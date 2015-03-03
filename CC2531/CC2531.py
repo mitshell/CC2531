@@ -84,7 +84,7 @@ def get_CC2531():
     #
     try:
         manuf = cc2531[0].getManufacturer()
-    except USBError:
+    except libusb1.USBError:
         #LOG(' cannot open USB device through libusb:' \
         #    ' add yourself in the "root" group or make an udev rule')
         return []
