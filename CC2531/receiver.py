@@ -184,7 +184,7 @@ class receiver(object):
                         self._cc.start_capture()
                         T0 = time()
                         while self.looping() and (time()-T0 < self.CHAN_PERIOD):
-                            self.read_frame()
+                            self.read_frames()
                         self._cc.stop_capture()
         #
         # single channel monitor
@@ -196,15 +196,19 @@ class receiver(object):
             self._cc.config(self._chan)
             self._cc.start_capture()
             while self.looping():
-                self.read_frame()
+                self.read_frames()
             self._cc.stop_capture()
                 
-    def read_frame(self):
+    def read_frames(self):
         data = self._cc.read_data()
-        if len(data) > 4:
-            self.forward(data)
-        elif len(data) == 0:
+        if len(data) == 0:
             siesta()
+        # multiple radio frames can be concatenated into a single USB bulk 
+        # transfer: they are split here
+        while len(data) > 7:
+            l = unpack('<H', data[1:3])[0]
+            self.forward(data[:l+3])
+            data = data[l+3:]
     
     def forward(self, data=5*'\0'):
         # add channel TLV

@@ -119,7 +119,7 @@ class CC2531(object):
     # only a single endpoint for receiving sniffed 802.15.4 packets
     DATA_EP = 3
     # data read settings
-    DATA_BUFLEN = 0x100 # data buffer size
+    DATA_BUFLEN = 1024 # data buffer size
     READ_TO = 1 # timeout in milliseconds
     #
     # CC2531 dongle internal configuration settings length
@@ -175,7 +175,7 @@ class CC2531(object):
     # _set_config(1), ...
     # _set_ctrl(197, 4), _get_ctrl(198) {3,}, _set_ctrl(201, 0), _set_ctrl(210, 0), _set_ctrl(210, 1), _set_ctrl(208, 0)
     # -> bulk transfer
-    #  _set_ctrl(209, 0), _set_ctrl(197, 0), _set_config(0), ...
+    # _set_ctrl(209, 0), _set_ctrl(197, 0), _set_config(0), ...
     ###
     
     def _set_config(self, c=0):
@@ -283,7 +283,7 @@ class CC2531(object):
         if self.DEBUG > 1:
             info = ' - timeout' if not ret else ''
             self._log('(read_data) done%s' % info)
-        return str(ret)
+        return bytes(ret)
     
 
 def test(cc=None, chan=0x0b):
