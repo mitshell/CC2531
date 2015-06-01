@@ -29,7 +29,7 @@
 import os
 import socket
 import signal
-from struct import pack
+from struct import pack, unpack
 from time import time, sleep
 from CC2531 import *
 
