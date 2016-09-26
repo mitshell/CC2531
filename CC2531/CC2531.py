@@ -179,7 +179,7 @@ class CC2531(object):
     ###
     
     def _set_config(self, c=0):
-        ret = self.com.controlWrite(0x00, 9, c, 0, '\0')
+        ret = self.com.controlWrite(0x00, 9, c, 0, '')
         if self.DEBUG > 2:
             self._log('(_set_config, c %i) ret: %i' % (c, ret))
     
